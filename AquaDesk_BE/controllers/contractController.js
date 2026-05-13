@@ -140,22 +140,46 @@ const deleteContract = async (req, res) => {
 const renewContract = async (req, res) => {
   try {
     const { id } = req.params;
-    const { newEndDate, newContractPeriod, newFrequency, notes } = req.body;
+    const {
+      newEndDate,
+      newContractPeriod,
+      newFrequency,
+      newContractValue,
+      renewalNotes,
+      notes
+    } = req.body;
 
     if (!newEndDate) {
       return res.status(400).json({ error: 'New end date is required' });
     }
 
+    const existing = await executeScalar(
+      'SELECT ContractPeriod, Frequency, ContractValue, RenewalNotes, Notes, Status FROM ServiceContracts WHERE ContractID = @ContractID',
+      { ContractID: id }
+    );
+    if (!existing) {
+      return res.status(404).json({ error: 'Contract not found' });
+    }
+
+    const noteText = renewalNotes !== undefined ? renewalNotes : notes;
+
     await executeNonQuery(
-      `UPDATE ServiceContracts 
-       SET EndDate = @NewEndDate, ContractPeriod = @NewContractPeriod, Frequency = @NewFrequency, 
-           Notes = @Notes, UpdatedAt = GETDATE()
+      `UPDATE ServiceContracts
+       SET EndDate = @NewEndDate,
+           ContractPeriod = @NewContractPeriod,
+           Frequency = @NewFrequency,
+           ContractValue = @ContractValue,
+           RenewalNotes = @RenewalNotes,
+           Status = 1,
+           LastRenewedAt = GETDATE(),
+           UpdatedAt = GETDATE()
        WHERE ContractID = @ContractID`,
       {
         NewEndDate: newEndDate,
-        NewContractPeriod: newContractPeriod || null,
-        NewFrequency: newFrequency || null,
-        notes,
+        NewContractPeriod: newContractPeriod !== undefined ? newContractPeriod : existing.ContractPeriod,
+        NewFrequency: newFrequency !== undefined ? newFrequency : existing.Frequency,
+        ContractValue: newContractValue !== undefined ? newContractValue : existing.ContractValue,
+        RenewalNotes: noteText !== undefined ? noteText : existing.RenewalNotes,
         ContractID: id
       }
     );

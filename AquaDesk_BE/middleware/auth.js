@@ -16,7 +16,7 @@ const authenticateToken = async (req, res, next) => {
     
     // Verify user exists and is active
     const user = await executeScalar(
-      'SELECT UserID, Username, FullName, Email, Role, CompanyID, Status FROM Users WHERE UserID = @UserID',
+      'SELECT UserID, Username, FullName, Email, Role, CompanyID, CustomerID, Status FROM Users WHERE UserID = @UserID',
       { UserID: decoded.userId }
     );
 
@@ -31,7 +31,8 @@ const authenticateToken = async (req, res, next) => {
       fullName: user.FullName,
       email: user.Email,
       role: user.Role,
-      companyId: user.CompanyID
+      companyId: user.CompanyID,
+      customerId: user.CustomerID || null
     };
 
     logger.info('User authenticated', { userId: user.UserID, username: user.Username, role: user.Role, path: req.path });
@@ -89,8 +90,35 @@ const isAdmin = (req, res, next) => {
   next();
 };
 
+const hasRole = (...allowedRoles) => {
+  return (req, res, next) => {
+    if (!req.user || !allowedRoles.includes(req.user.role)) {
+      logger.warn('Role access denied', {
+        userId: req.user && req.user.userId,
+        role: req.user && req.user.role,
+        required: allowedRoles,
+        path: req.path
+      });
+      return res.status(403).json({ error: 'Access denied' });
+    }
+    next();
+  };
+};
+
+const isCustomer = (req, res, next) => {
+  if (!req.user || req.user.role !== 'Customer') {
+    return res.status(403).json({ error: 'Customer access required' });
+  }
+  if (!req.user.customerId) {
+    return res.status(403).json({ error: 'Customer account is not linked to a customer record' });
+  }
+  next();
+};
+
 module.exports = {
   authenticateToken,
   checkAccess,
-  isAdmin
+  isAdmin,
+  hasRole,
+  isCustomer
 };

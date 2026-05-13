@@ -15,6 +15,8 @@ const scheduleRoutes = require('./routes/scheduleRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const reportRoutes = require('./routes/reportRoutes');
 const contractRoutes = require('./routes/contractRoutes');
+const customerPortalRoutes = require('./routes/customerPortalRoutes');
+const dashboardRoutes = require('./routes/dashboardRoutes');
 const swaggerRoutes = require('./routes/swaggerRoutes');
 
 const app = express();
@@ -63,6 +65,8 @@ app.use('/api/schedule', scheduleRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/contracts', contractRoutes);
+app.use('/api/customer-portal', customerPortalRoutes);
+app.use('/api/dashboard', dashboardRoutes);
 
 // Swagger API Documentation
 app.use('/api-docs', swaggerRoutes);

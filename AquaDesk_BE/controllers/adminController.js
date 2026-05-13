@@ -1108,21 +1108,56 @@ const createComplaint = async (req, res) => {
   }
 };
 
-const updateComplaint = async (req, res) => {
+  const updateComplaint = async (req, res) => {
   try {
-    const { id } = req.params;
-    const { salesNo, description, status } = req.body;
-    await executeNonQuery(
-      `UPDATE Complaints SET SalesNo = @SalesNo, Description = @Description, Status = @Status
-       WHERE ComplaintID = @ComplaintID`,
-      { salesNo, description, Status: status, ComplaintID: id }
-    );
-    res.json({ message: 'Complaint updated successfully' });
-  } catch (error) {
-    console.error('Update complaint error:', error);
-    res.status(500).json({ error: 'Failed to update complaint' });
+  const { id } = req.params;
+  const { salesNo, description, status, resolution } = req.body;
+
+  // Load existing row so partial updates work (Admin/Manager workflow only sends status+resolution).
+  const existing = await executeScalar(
+    'SELECT SalesNo, Description, Status, Resolution, ResolvedDate FROM Complaints WHERE ComplaintID = @ComplaintID',
+    { ComplaintID: id }
+  );
+  if (!existing) {
+    return res.status(404).json({ error: 'Complaint not found' });
   }
-};
+
+  const nextStatus = status !== undefined ? status : existing.Status;
+  const nextResolution = resolution !== undefined ? resolution : existing.Resolution;
+  const nextSalesNo = salesNo !== undefined ? salesNo : existing.SalesNo;
+  const nextDescription = description !== undefined ? description : existing.Description;
+  // Stamp ResolvedDate the first time the complaint moves to Resolved.
+  let resolvedDate = existing.ResolvedDate;
+  if (nextStatus === 'Resolved' && !resolvedDate) {
+    resolvedDate = new Date();
+  } else if (nextStatus !== 'Resolved' && nextStatus !== 'Closed') {
+    resolvedDate = null;
+  }
+
+  await executeNonQuery(
+  `UPDATE Complaints
+   SET SalesNo = @SalesNo,
+       Description = @Description,
+       Status = @Status,
+       Resolution = @Resolution,
+       ResolvedDate = @ResolvedDate,
+       UpdatedAt = GETDATE()
+   WHERE ComplaintID = @ComplaintID`,
+  {
+    SalesNo: nextSalesNo,
+    Description: nextDescription,
+    Status: nextStatus,
+    Resolution: nextResolution,
+    ResolvedDate: resolvedDate,
+    ComplaintID: id
+  }
+  );
+  res.json({ message: 'Complaint updated successfully' });
+  } catch (error) {
+  console.error('Update complaint error:', error);
+  res.status(500).json({ error: 'Failed to update complaint' });
+  }
+  };
 
 const deleteComplaint = async (req, res) => {
   try {

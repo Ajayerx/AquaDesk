@@ -1,6 +1,10 @@
 const express = require('express');
 const router = express.Router();
-const { authenticateToken, checkAccess } = require('../middleware/auth');
+const { authenticateToken, checkAccess, hasRole } = require('../middleware/auth');
+const {
+  listScheduleRequests,
+  updateScheduleRequest
+} = require('../controllers/scheduleRequestController');
 const {
   // Engineers
   getAllEngineers,
@@ -283,5 +287,19 @@ router.delete('/holidays/:id', authenticateToken, checkAccess('Holiday', 'CanDel
 router.get('/contract-type/:categoryId/systems', authenticateToken, getSystemsByContractType);
 router.get('/contract-type/:categoryId/services', authenticateToken, getServicesByContractType);
 router.get('/contract-type/:categoryId/items', authenticateToken, getItemsByContractType);
+
+// Customer-submitted Schedule Requests (Admin/Manager only)
+router.get(
+  '/schedule-requests',
+  authenticateToken,
+  hasRole('Admin', 'Manager'),
+  listScheduleRequests
+);
+router.put(
+  '/schedule-requests/:id',
+  authenticateToken,
+  hasRole('Admin', 'Manager'),
+  updateScheduleRequest
+);
 
 module.exports = router;

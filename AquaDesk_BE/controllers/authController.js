@@ -63,7 +63,8 @@ const login = async (req, res) => {
         fullName: user.FullName,
         email: user.Email,
         role: user.Role,
-        companyId: user.CompanyID
+        companyId: user.CompanyID,
+        customerId: user.CustomerID || null
       },
       accessRights
     });
@@ -82,8 +83,8 @@ const logout = async (req, res) => {
 
 const getCurrentUser = async (req, res) => {
   try {
-    const user = await executeScalar(
-      'SELECT UserID, Username, FullName, Email, Phone, Role, CompanyID, LastLogin FROM Users WHERE UserID = @UserID',
+    const dbUser = await executeScalar(
+      'SELECT UserID, Username, FullName, Email, Phone, Role, CompanyID, CustomerID, LastLogin FROM Users WHERE UserID = @UserID',
       { UserID: req.user.userId }
     );
 
@@ -92,6 +93,20 @@ const getCurrentUser = async (req, res) => {
       'SELECT FormName, CanView, CanAdd, CanEdit, CanDelete, CanSearch, CanPrint FROM UserAccess WHERE UserID = @UserID',
       { UserID: req.user.userId }
     );
+
+    const user = dbUser
+      ? {
+          userId: dbUser.UserID,
+          username: dbUser.Username,
+          fullName: dbUser.FullName,
+          email: dbUser.Email,
+          phone: dbUser.Phone,
+          role: dbUser.Role,
+          companyId: dbUser.CompanyID,
+          customerId: dbUser.CustomerID || null,
+          lastLogin: dbUser.LastLogin
+        }
+      : null;
 
     logger.debug('Current user fetched', { userId: req.user.userId, username: req.user.username });
     res.json({ user, accessRights });
