@@ -1,3 +1,4 @@
+// LEGACY SCRIPT -- DDL now in schema.sql; data-migration INSERTs are one-time only
 require('dotenv').config();
 const fs = require('fs');
 const path = require('path');
@@ -24,13 +25,13 @@ if (isWindowsAuth) {
   };
 }
 
-async function runSeed() {
+async function runMigration() {
   try {
     console.log(`Connecting to SQL Server: ${process.env.DB_SERVER}, DB: ${process.env.DB_DATABASE}`);
     const pool = await sql.connect(config);
     
-    const seedFile = path.join(__dirname, 'seed-data.sql');
-    const sqlScript = fs.readFileSync(seedFile, 'utf8');
+    const migrationFile = path.join(__dirname, 'migrate-sales-plan.sql');
+    const sqlScript = fs.readFileSync(migrationFile, 'utf8');
     
     // Split on GO statements and execute each batch
     const batches = sqlScript.split(/\nGO\n/i).filter(b => b.trim().length > 0);
@@ -41,8 +42,7 @@ async function runSeed() {
         try {
           await pool.request().query(batch);
         } catch (err) {
-          // Some batches may have issues with PRINT or complex syntax
-          console.error(`Batch ${i + 1} error: ${err.message}`);
+          console.error(`Batch ${i + 1} error: ${err.message.substring(0, 200)}`);
         }
       }
     }
@@ -50,7 +50,6 @@ async function runSeed() {
     // If no GO statements, try running the whole script as one batch
     if (batches.length <= 1) {
       try {
-        // Split by semicolons for individual statements
         const statements = sqlScript.split(';').filter(s => s.trim().length > 0);
         for (const stmt of statements) {
           try {
@@ -64,11 +63,10 @@ async function runSeed() {
       }
     }
     
-    // Verify row counts
-    const tables = ['Companies','Users','UserAccess','AreaCodes','ContractCategories','ContractIntervals','ServiceIntervals','Systems','Services','Items','ItemStock','ServiceCost','SystemCost','ItemCost','ServiceHours','ServiceTeams','ServiceEngineers','Customers','CustomerSystems','ServiceContracts','SalesMaster','SalesMasterSystems','SalesMasterServices','SalesMasterItems','Schedule','Complaints','SalesMasterPlan','SalesMasterPlanSystem','SalesMasterPlanService','SalesMasterPlanItem'];
-    
-    console.log('\n=== Row Counts ===');
-    for (const table of tables) {
+    // Verify new tables
+    const newTables = ['ContractCategorySystems', 'ContractCategoryServices', 'ContractCategoryItems', 'SalesPlanDetails'];
+    console.log('\n=== New Tables Row Counts ===');
+    for (const table of newTables) {
       try {
         const result = await pool.request().query(`SELECT COUNT(*) AS cnt FROM ${table}`);
         console.log(`  ${table}: ${result.recordset[0].cnt} rows`);
@@ -78,12 +76,12 @@ async function runSeed() {
     }
     
     await pool.close();
-    console.log('\nSeed completed!');
+    console.log('\nMigration completed!');
     process.exit(0);
   } catch (error) {
-    console.error('Seed failed:', error.message);
+    console.error('Migration failed:', error.message);
     process.exit(1);
   }
 }
 
-runSeed();
+runMigration();

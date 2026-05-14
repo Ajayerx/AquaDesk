@@ -48,7 +48,7 @@ export const customerService = {
   getAll: (params?: { search?: string; areaCode?: string }) =>
     api.get<Customer[]>('/customers', { params }),
   getById: (id: number) => api.get<Customer>(`/customers/${id}`),
-  getDetails: (id: number) => api.get<Customer>(`/customers/${id}`),
+  getDetails: (id: number) => api.get<Customer>(`/customers/${id}/details`),
   create: (data: CustomerInput) => api.post('/customers', data),
   update: (id: number, data: CustomerInput) => api.put(`/customers/${id}`, data),
   delete: (id: number) => api.delete(`/customers/${id}`),

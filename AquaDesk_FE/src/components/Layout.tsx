@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import NotificationBell from './NotificationBell';
 import {
   LayoutDashboard,
   Building2,
@@ -23,42 +24,10 @@ import {
   DollarSign,
   Database,
   Wind,
-  Palmtree
+  Palmtree,
+  AlertTriangle,
+  RefreshCw
 } from 'lucide-react';
-
-const navItems = [
-  { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
-  { name: 'Companies', path: '/companies', icon: Building2 },
-  { name: 'Users', path: '/users', icon: Users },
-  { name: 'Customers', path: '/customers', icon: User },
-  { name: 'Contracts', path: '/contracts', icon: FileText },
-  { name: 'Sales', path: '/sales', icon: ShoppingCart },
-  { name: 'Sales Master Plans', path: '/sales-master-plans', icon: FileText },
-  { name: 'Schedule', path: '/schedule', icon: Calendar },
-  { name: 'Reports', path: '/reports', icon: BarChart3 },
-  {
-    name: 'Admin',
-    icon: Settings,
-    children: [
-      { name: 'Engineers', path: '/admin/engineers', icon: Users },
-      { name: 'Teams', path: '/admin/teams', icon: Building2 },
-      { name: 'Systems', path: '/admin/systems', icon: Cpu },
-      { name: 'Services', path: '/admin/services', icon: Wrench },
-      { name: 'Items', path: '/admin/items', icon: Package },
-      { name: 'Item Stock', path: '/admin/item-stock', icon: Database },
-      { name: 'Area Codes', path: '/admin/area-codes', icon: MapPin },
-      { name: 'Categories', path: '/admin/categories', icon: FileText },
-      { name: 'Contract Periods', path: '/admin/contract-periods', icon: Calendar },
-      { name: 'Contract Intervals', path: '/admin/contract-intervals', icon: Clock },
-      { name: 'Service Intervals', path: '/admin/service-intervals', icon: Wind },
-      { name: 'Service Hours', path: '/admin/service-hours', icon: Clock },
-      { name: 'Service Cost', path: '/admin/service-cost', icon: DollarSign },
-      { name: 'System Cost', path: '/admin/system-cost', icon: Cpu },
-      { name: 'Item Cost', path: '/admin/item-cost', icon: Package },
-      { name: 'Holidays', path: '/admin/holidays', icon: Palmtree },
-    ],
-  },
-];
 
 const Layout: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -74,9 +43,47 @@ const Layout: React.FC = () => {
 
   const isActive = (path: string) => location.pathname === path || location.pathname.startsWith(path + '/');
 
+  const role = user?.role;
+
+  const navItems = [
+    { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard, roles: ['SuperAdmin', 'Admin', 'Manager'] },
+    { name: 'Companies', path: '/companies', icon: Building2, roles: ['SuperAdmin'] },
+    { name: 'Users', path: '/users', icon: Users, roles: ['SuperAdmin', 'Admin'] },
+    { name: 'Customers', path: '/customers', icon: User, roles: ['Admin', 'Manager'] },
+    { name: 'Contracts', path: '/contracts', icon: FileText, roles: ['Admin', 'Manager'] },
+    { name: 'Sales', path: '/sales', icon: ShoppingCart, roles: ['Admin', 'Manager'] },
+    { name: 'Sales Master Plans', path: '/sales-master-plans', icon: FileText, roles: ['Admin', 'Manager'] },
+    { name: 'Schedule', path: '/schedule', icon: Calendar, roles: ['Admin', 'Manager', 'Engineer'] },
+    { name: 'Complaints', path: '/complaints', icon: AlertTriangle, roles: ['Admin', 'Manager'] },
+    { name: 'Schedule Requests', path: '/schedule-requests', icon: RefreshCw, roles: ['Admin', 'Manager'] },
+    { name: 'Reports', path: '/reports', icon: BarChart3, roles: ['Admin', 'Manager'] },
+    {
+      name: 'Admin',
+      icon: Settings,
+      roles: ['SuperAdmin', 'Admin'],
+      children: [
+        { name: 'Engineers', path: '/admin/engineers', icon: Users },
+        { name: 'Teams', path: '/admin/teams', icon: Building2 },
+        { name: 'Systems', path: '/admin/systems', icon: Cpu },
+        { name: 'Services', path: '/admin/services', icon: Wrench },
+        { name: 'Items', path: '/admin/items', icon: Package },
+        { name: 'Item Stock', path: '/admin/item-stock', icon: Database },
+        { name: 'Area Codes', path: '/admin/area-codes', icon: MapPin },
+        { name: 'Categories', path: '/admin/categories', icon: FileText },
+        { name: 'Contract Periods', path: '/admin/contract-periods', icon: Calendar },
+        { name: 'Contract Intervals', path: '/admin/contract-intervals', icon: Clock },
+        { name: 'Service Intervals', path: '/admin/service-intervals', icon: Wind },
+        { name: 'Service Hours', path: '/admin/service-hours', icon: Clock },
+        { name: 'Service Cost', path: '/admin/service-cost', icon: DollarSign },
+        { name: 'System Cost', path: '/admin/system-cost', icon: Cpu },
+        { name: 'Item Cost', path: '/admin/item-cost', icon: Package },
+        { name: 'Holidays', path: '/admin/holidays', icon: Palmtree },
+      ],
+    },
+  ].filter(item => item.roles.includes(role || ''));
+
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Mobile sidebar backdrop */}
       {sidebarOpen && (
         <div
           className="fixed inset-0 bg-black/50 z-40 lg:hidden"
@@ -84,7 +91,6 @@ const Layout: React.FC = () => {
         />
       )}
 
-      {/* Sidebar */}
       <aside
         className={`fixed top-0 left-0 z-50 h-full w-64 bg-sidebar text-white transition-transform duration-300 lg:translate-x-0 ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
@@ -169,9 +175,7 @@ const Layout: React.FC = () => {
         </div>
       </aside>
 
-      {/* Main content */}
       <div className="lg:ml-64">
-        {/* Header */}
         <header className="bg-white border-b border-gray-200 sticky top-0 z-30">
           <div className="flex items-center justify-between px-6 py-4">
             <button
@@ -182,6 +186,7 @@ const Layout: React.FC = () => {
             </button>
 
             <div className="flex items-center gap-4 ml-auto">
+              {(role === 'Admin' || role === 'Manager') && <NotificationBell />}
               <div className="text-right">
                 <p className="text-sm font-medium text-gray-900">{user?.fullName}</p>
                 <p className="text-xs text-gray-500">{user?.role}</p>
@@ -193,7 +198,6 @@ const Layout: React.FC = () => {
           </div>
         </header>
 
-        {/* Page content */}
         <main className="p-6">
           <Outlet />
         </main>

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useToast } from '../components/Toast';
 import { contractService } from '../services/contractService';
 import type { Contract, ContractInput } from '../services/contractService';
 import { Plus, Edit, Trash2, Search, FileText, RefreshCw } from 'lucide-react';
@@ -6,6 +7,7 @@ import { Plus, Edit, Trash2, Search, FileText, RefreshCw } from 'lucide-react';
 const Contracts: React.FC = () => {
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [loading, setLoading] = useState(true);
+  const { showToast } = useToast();
   const [search, setSearch] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [showRenewModal, setShowRenewModal] = useState(false);
@@ -25,12 +27,14 @@ const Contracts: React.FC = () => {
     newEndDate: string;
     newContractPeriod: number | undefined;
     newFrequency: number | undefined;
-    notes: string;
+    newContractValue: number | undefined;
+    renewalNotes: string;
   }>({
     newEndDate: '',
     newContractPeriod: undefined,
     newFrequency: undefined,
-    notes: '',
+    newContractValue: undefined,
+    renewalNotes: '',
   });
 
   useEffect(() => {
@@ -70,8 +74,16 @@ const Contracts: React.FC = () => {
       });
       loadContracts();
     } catch (error: any) {
-      alert(error.response?.data?.error || 'Failed to save contract');
+      showToast('error', error.response?.data?.error || 'Failed to save contract');
     }
+  };
+
+  const isExpiringSoon = (endDate: string) => {
+    if (!endDate) return false;
+    const end = new Date(endDate);
+    const now = new Date();
+    const diff = (end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24);
+    return diff <= 60 && diff > 0;
   };
 
   const handleRenew = async () => {
@@ -84,12 +96,13 @@ const Contracts: React.FC = () => {
         newEndDate: '',
         newContractPeriod: undefined,
         newFrequency: undefined,
-        notes: '',
+        newContractValue: undefined,
+        renewalNotes: '',
       });
       loadContracts();
-      alert('Contract renewed successfully');
+      showToast('success', 'Contract renewed successfully');
     } catch (error: any) {
-      alert(error.response?.data?.error || 'Failed to renew contract');
+      showToast('error', error.response?.data?.error || 'Failed to renew contract');
     }
   };
 
@@ -114,7 +127,7 @@ const Contracts: React.FC = () => {
       await contractService.delete(id);
       loadContracts();
     } catch (error: any) {
-      alert(error.response?.data?.error || 'Failed to delete contract');
+      showToast('error', error.response?.data?.error || 'Failed to delete contract');
     }
   };
 
@@ -183,7 +196,7 @@ const Contracts: React.FC = () => {
             </thead>
             <tbody className="divide-y divide-gray-200">
               {filteredContracts.map((contract) => (
-                <tr key={contract.ContractID} className="hover:bg-gray-50">
+                <tr key={contract.ContractID} className={`hover:bg-gray-50 ${isExpiringSoon(contract.EndDate || '') ? 'bg-yellow-50' : ''}`}>
                   <td className="px-6 py-4 text-sm text-gray-900">{contract.CustomerName || '-'}</td>
                   <td className="px-6 py-4 text-sm text-gray-900">{contract.CategoryName || '-'}</td>
                   <td className="px-6 py-4 text-sm text-gray-600">
@@ -194,11 +207,15 @@ const Contracts: React.FC = () => {
                   </td>
                   <td className="px-6 py-4">
                     <span
-                      className={`px-2 py-1 text-xs font-medium rounded-full ${
-                        contract.Status ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                       className={`px-2 py-1 text-xs font-medium rounded-full ${
+                        isExpiringSoon(contract.EndDate || '')
+                          ? 'bg-yellow-100 text-yellow-800'
+                          : contract.Status
+                          ? 'bg-green-100 text-green-800'
+                          : 'bg-red-100 text-red-800'
                       }`}
                     >
-                      {contract.Status ? 'Active' : 'Inactive'}
+                      {isExpiringSoon(contract.EndDate || '') ? 'Expiring Soon' : contract.Status ? 'Active' : 'Inactive'}
                     </span>
                   </td>
                   <td className="px-6 py-4 text-right">
@@ -209,7 +226,8 @@ const Contracts: React.FC = () => {
                           newEndDate: contract.EndDate || '',
                           newContractPeriod: contract.ContractPeriod,
                           newFrequency: contract.Frequency,
-                          notes: '',
+                          newContractValue: undefined,
+                          renewalNotes: '',
                         });
                         setShowRenewModal(true);
                       }}
@@ -365,13 +383,22 @@ const Contracts: React.FC = () => {
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
                 />
               </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">New Contract Value</label>
+                <input
+                  type="number"
+                  value={renewData.newContractValue || ''}
+                  onChange={(e) => setRenewData({ ...renewData, newContractValue: e.target.value ? parseFloat(e.target.value) : undefined })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+                />
+              </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">New Period</label>
                   <input
                     type="number"
-                    value={renewData.newContractPeriod}
-                    onChange={(e) => setRenewData({ ...renewData, newContractPeriod: parseInt(e.target.value) })}
+                    value={renewData.newContractPeriod || ''}
+                    onChange={(e) => setRenewData({ ...renewData, newContractPeriod: e.target.value ? parseInt(e.target.value) : undefined })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
                   />
                 </div>
@@ -379,17 +406,17 @@ const Contracts: React.FC = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-1">New Frequency</label>
                   <input
                     type="number"
-                    value={renewData.newFrequency}
-                    onChange={(e) => setRenewData({ ...renewData, newFrequency: parseInt(e.target.value) })}
+                    value={renewData.newFrequency || ''}
+                    onChange={(e) => setRenewData({ ...renewData, newFrequency: e.target.value ? parseInt(e.target.value) : undefined })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
                   />
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Renewal Notes</label>
                 <textarea
-                  value={renewData.notes}
-                  onChange={(e) => setRenewData({ ...renewData, notes: e.target.value })}
+                  value={renewData.renewalNotes}
+                  onChange={(e) => setRenewData({ ...renewData, renewalNotes: e.target.value })}
                   rows={2}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
                 />

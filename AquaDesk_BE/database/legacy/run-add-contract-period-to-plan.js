@@ -1,3 +1,4 @@
+// LEGACY SCRIPT -- Columns now in schema.sql SalesMasterPlan CREATE TABLE
 require('dotenv').config();
 const { executeNonQuery, executeQuery } = require('../config/database');
 const fs = require('fs');

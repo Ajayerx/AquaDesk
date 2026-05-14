@@ -16,7 +16,7 @@ const authenticateToken = async (req, res, next) => {
     
     // Verify user exists and is active
     const user = await executeScalar(
-      'SELECT UserID, Username, FullName, Email, Role, CompanyID, Status FROM Users WHERE UserID = @UserID',
+      'SELECT UserID, Username, FullName, Email, Role, CompanyID, CustomerID, Status FROM Users WHERE UserID = @UserID',
       { UserID: decoded.userId }
     );
 
@@ -31,7 +31,8 @@ const authenticateToken = async (req, res, next) => {
       fullName: user.FullName,
       email: user.Email,
       role: user.Role,
-      companyId: user.CompanyID
+      companyId: user.CompanyID,
+      customerId: user.CustomerID || null
     };
 
     logger.info('User authenticated', { userId: user.UserID, username: user.Username, role: user.Role, path: req.path });

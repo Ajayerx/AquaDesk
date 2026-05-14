@@ -125,7 +125,13 @@ const {
   getAllHolidays,
   createHoliday,
   updateHoliday,
-  deleteHoliday
+  deleteHoliday,
+  // Schedule Requests
+  getAllScheduleRequests,
+  updateScheduleRequest,
+  // Complaints Admin
+  getAllComplaintsAdmin,
+  updateComplaintAdmin
 } = require('../controllers/adminController');
 
 // Service Engineers
@@ -278,6 +284,14 @@ router.get('/holidays', authenticateToken, checkAccess('Holiday', 'CanView'), ge
 router.post('/holidays', authenticateToken, checkAccess('Holiday', 'CanAdd'), createHoliday);
 router.put('/holidays/:id', authenticateToken, checkAccess('Holiday', 'CanEdit'), updateHoliday);
 router.delete('/holidays/:id', authenticateToken, checkAccess('Holiday', 'CanDelete'), deleteHoliday);
+
+// Schedule Requests
+router.get('/schedule-requests', authenticateToken, getAllScheduleRequests);
+router.put('/schedule-requests/:id', authenticateToken, updateScheduleRequest);
+
+// Complaints Management
+router.get('/complaints-management', authenticateToken, getAllComplaintsAdmin);
+router.put('/complaints-management/:id', authenticateToken, updateComplaintAdmin);
 
 // Contract Type Filtering for Sales Master Plan
 router.get('/contract-type/:categoryId/systems', authenticateToken, getSystemsByContractType);

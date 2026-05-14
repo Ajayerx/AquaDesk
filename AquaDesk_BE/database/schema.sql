@@ -1,7 +1,9 @@
--- Qsystech Service Management System Database Schema
--- This file contains all table creation scripts
+-- AquaDesk Database Schema
+-- Canonical schema: one CREATE TABLE per entity, all columns, all FK constraints.
+-- Does NOT contain seed data (see seed.sql).
+-- Legacy tables marked --LEGACY-- are kept for backward compatibility with one-time migration scripts.
 
--- Companies Table
+-- Companies
 IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'Companies')
 BEGIN
     CREATE TABLE Companies (
@@ -23,43 +25,23 @@ BEGIN
     );
 END
 
--- Users Table
-IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'Users')
+-- ContractPeriods
+IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'ContractPeriods')
 BEGIN
-    CREATE TABLE Users (
-        UserID INT IDENTITY(1,1) PRIMARY KEY,
-        Username NVARCHAR(50) UNIQUE NOT NULL,
-        Password NVARCHAR(255) NOT NULL,
-        FullName NVARCHAR(100) NOT NULL,
-        Email NVARCHAR(100),
-        Phone NVARCHAR(20),
-        CompanyID INT FOREIGN KEY REFERENCES Companies(CompanyID),
-        Role NVARCHAR(50) DEFAULT 'User',
+    CREATE TABLE ContractPeriods (
+        PeriodID INT IDENTITY(1,1) PRIMARY KEY,
+        PeriodCode NVARCHAR(20) UNIQUE NOT NULL,
+        PeriodName NVARCHAR(100) NOT NULL,
+        Description NVARCHAR(500),
+        DurationMonths INT,
         Status BIT DEFAULT 1,
-        LastLogin DATETIME,
+        CompanyID INT FOREIGN KEY REFERENCES Companies(CompanyID),
         CreatedAt DATETIME DEFAULT GETDATE(),
         UpdatedAt DATETIME DEFAULT GETDATE()
     );
 END
 
--- UserAccess Table (Role-based access control)
-IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'UserAccess')
-BEGIN
-    CREATE TABLE UserAccess (
-        AccessID INT IDENTITY(1,1) PRIMARY KEY,
-        UserID INT FOREIGN KEY REFERENCES Users(UserID),
-        FormName NVARCHAR(100) NOT NULL,
-        CanView BIT DEFAULT 0,
-        CanAdd BIT DEFAULT 0,
-        CanEdit BIT DEFAULT 0,
-        CanDelete BIT DEFAULT 0,
-        CanSearch BIT DEFAULT 0,
-        CanPrint BIT DEFAULT 0,
-        CreatedAt DATETIME DEFAULT GETDATE()
-    );
-END
-
--- AreaCodes Table
+-- AreaCodes
 IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'AreaCodes')
 BEGIN
     CREATE TABLE AreaCodes (
@@ -74,7 +56,7 @@ BEGIN
     );
 END
 
--- ContractCategories Table
+-- ContractCategories
 IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'ContractCategories')
 BEGIN
     CREATE TABLE ContractCategories (
@@ -84,12 +66,13 @@ BEGIN
         Description NVARCHAR(500),
         CompanyID INT FOREIGN KEY REFERENCES Companies(CompanyID),
         Status BIT DEFAULT 1,
+        ContractStatus NVARCHAR(20) DEFAULT 'MC',
         CreatedAt DATETIME DEFAULT GETDATE(),
         UpdatedAt DATETIME DEFAULT GETDATE()
     );
 END
 
--- ContractIntervals Table
+-- ContractIntervals
 IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'ContractIntervals')
 BEGIN
     CREATE TABLE ContractIntervals (
@@ -104,7 +87,7 @@ BEGIN
     );
 END
 
--- ServiceIntervals Table
+-- ServiceIntervals
 IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'ServiceIntervals')
 BEGIN
     CREATE TABLE ServiceIntervals (
@@ -119,7 +102,7 @@ BEGIN
     );
 END
 
--- Systems (Master Catalog) Table
+-- Systems (Master Catalog)
 IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'Systems')
 BEGIN
     CREATE TABLE Systems (
@@ -134,7 +117,7 @@ BEGIN
     );
 END
 
--- Services (Master Catalog) Table
+-- Services (Master Catalog)
 IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'Services')
 BEGIN
     CREATE TABLE Services (
@@ -149,7 +132,7 @@ BEGIN
     );
 END
 
--- Items (Master Catalog) Table
+-- Items (Master Catalog)
 IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'Items')
 BEGIN
     CREATE TABLE Items (
@@ -165,70 +148,12 @@ BEGIN
     );
 END
 
--- ItemStock Table
-IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'ItemStock')
-BEGIN
-    CREATE TABLE ItemStock (
-        StockID INT IDENTITY(1,1) PRIMARY KEY,
-        ItemID INT FOREIGN KEY REFERENCES Items(ItemID),
-        CompanyID INT FOREIGN KEY REFERENCES Companies(CompanyID),
-        Quantity DECIMAL(18,2) DEFAULT 0,
-        Price DECIMAL(18,2) DEFAULT 0,
-        ReorderLevel DECIMAL(18,2) DEFAULT 0,
-        CreatedAt DATETIME DEFAULT GETDATE(),
-        UpdatedAt DATETIME DEFAULT GETDATE()
-    );
-END
-
--- ServiceCost Table
-IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'ServiceCost')
-BEGIN
-    CREATE TABLE ServiceCost (
-        ServiceCostID INT IDENTITY(1,1) PRIMARY KEY,
-        CategoryID INT FOREIGN KEY REFERENCES ContractCategories(CategoryID),
-        ServiceID INT FOREIGN KEY REFERENCES Services(ServiceID),
-        Cost DECIMAL(18,2) DEFAULT 0,
-        ServiceTime INT DEFAULT 0, -- in minutes
-        CompanyID INT FOREIGN KEY REFERENCES Companies(CompanyID),
-        CreatedAt DATETIME DEFAULT GETDATE(),
-        UpdatedAt DATETIME DEFAULT GETDATE()
-    );
-END
-
--- SystemCost Table
-IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'SystemCost')
-BEGIN
-    CREATE TABLE SystemCost (
-        SystemCostID INT IDENTITY(1,1) PRIMARY KEY,
-        CategoryID INT FOREIGN KEY REFERENCES ContractCategories(CategoryID),
-        SystemID INT FOREIGN KEY REFERENCES Systems(SystemID),
-        Cost DECIMAL(18,2) DEFAULT 0,
-        CompanyID INT FOREIGN KEY REFERENCES Companies(CompanyID),
-        CreatedAt DATETIME DEFAULT GETDATE(),
-        UpdatedAt DATETIME DEFAULT GETDATE()
-    );
-END
-
--- ItemCost Table
-IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'ItemCost')
-BEGIN
-    CREATE TABLE ItemCost (
-        ItemCostID INT IDENTITY(1,1) PRIMARY KEY,
-        CategoryID INT FOREIGN KEY REFERENCES ContractCategories(CategoryID),
-        ItemID INT FOREIGN KEY REFERENCES Items(ItemID),
-        Cost DECIMAL(18,2) DEFAULT 0,
-        CompanyID INT FOREIGN KEY REFERENCES Companies(CompanyID),
-        CreatedAt DATETIME DEFAULT GETDATE(),
-        UpdatedAt DATETIME DEFAULT GETDATE()
-    );
-END
-
--- ServiceHours Table
+-- ServiceHours
 IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'ServiceHours')
 BEGIN
     CREATE TABLE ServiceHours (
         ServiceHoursID INT IDENTITY(1,1) PRIMARY KEY,
-        DayOfWeek INT NOT NULL, -- 1=Monday, 7=Sunday
+        DayOfWeek INT NOT NULL,
         StartTime TIME NOT NULL,
         EndTime TIME NOT NULL,
         CompanyID INT FOREIGN KEY REFERENCES Companies(CompanyID),
@@ -237,7 +162,7 @@ BEGIN
     );
 END
 
--- ServiceTeams Table
+-- ServiceTeams
 IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'ServiceTeams')
 BEGIN
     CREATE TABLE ServiceTeams (
@@ -251,7 +176,7 @@ BEGIN
     );
 END
 
--- ServiceEngineers Table
+-- ServiceEngineers
 IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'ServiceEngineers')
 BEGIN
     CREATE TABLE ServiceEngineers (
@@ -267,7 +192,7 @@ BEGIN
     );
 END
 
--- Customers Table
+-- Customers
 IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'Customers')
 BEGIN
     CREATE TABLE Customers (
@@ -293,7 +218,44 @@ BEGIN
     );
 END
 
--- CustomerSystems Table
+-- Users
+IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'Users')
+BEGIN
+    CREATE TABLE Users (
+        UserID INT IDENTITY(1,1) PRIMARY KEY,
+        Username NVARCHAR(50) UNIQUE NOT NULL,
+        Password NVARCHAR(255) NOT NULL,
+        FullName NVARCHAR(100) NOT NULL,
+        Email NVARCHAR(100),
+        Phone NVARCHAR(20),
+        CompanyID INT FOREIGN KEY REFERENCES Companies(CompanyID),
+        Role NVARCHAR(50) DEFAULT 'User',
+        Status BIT DEFAULT 1,
+        CustomerID INT FOREIGN KEY REFERENCES Customers(CustomerID),
+        LastLogin DATETIME,
+        CreatedAt DATETIME DEFAULT GETDATE(),
+        UpdatedAt DATETIME DEFAULT GETDATE()
+    );
+END
+
+-- UserAccess
+IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'UserAccess')
+BEGIN
+    CREATE TABLE UserAccess (
+        AccessID INT IDENTITY(1,1) PRIMARY KEY,
+        UserID INT FOREIGN KEY REFERENCES Users(UserID),
+        FormName NVARCHAR(100) NOT NULL,
+        CanView BIT DEFAULT 0,
+        CanAdd BIT DEFAULT 0,
+        CanEdit BIT DEFAULT 0,
+        CanDelete BIT DEFAULT 0,
+        CanSearch BIT DEFAULT 0,
+        CanPrint BIT DEFAULT 0,
+        CreatedAt DATETIME DEFAULT GETDATE()
+    );
+END
+
+-- CustomerSystems
 IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'CustomerSystems')
 BEGIN
     CREATE TABLE CustomerSystems (
@@ -310,7 +272,7 @@ BEGIN
     );
 END
 
--- ServiceContracts Table
+-- ServiceContracts
 IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'ServiceContracts')
 BEGIN
     CREATE TABLE ServiceContracts (
@@ -318,8 +280,8 @@ BEGIN
         CustomerID INT FOREIGN KEY REFERENCES Customers(CustomerID),
         CustomerSystemID INT FOREIGN KEY REFERENCES CustomerSystems(CustomerSystemID),
         CategoryID INT FOREIGN KEY REFERENCES ContractCategories(CategoryID),
-        ContractPeriod INT, -- in months
-        Frequency INT, -- in months
+        ContractPeriod INT,
+        Frequency INT,
         StartDate DATETIME,
         EndDate DATETIME,
         Status BIT DEFAULT 1,
@@ -329,157 +291,65 @@ BEGIN
     );
 END
 
--- SalesMaster Table
-IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'SalesMaster')
+-- ItemStock
+IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'ItemStock')
 BEGIN
-    CREATE TABLE SalesMaster (
-        SalesNo INT IDENTITY(1,1) PRIMARY KEY,
-        SalesDate DATETIME DEFAULT GETDATE(),
-        CustomerID INT FOREIGN KEY REFERENCES Customers(CustomerID),
-        CategoryID INT FOREIGN KEY REFERENCES ContractCategories(CategoryID),
-        ContractTypeID INT,
-        ServiceIntervalID INT FOREIGN KEY REFERENCES ServiceIntervals(ServiceIntervalID),
-        ContractIntervalID INT FOREIGN KEY REFERENCES ContractIntervals(IntervalID),
-        ContractStartDate DATETIME,
-        PlanType NVARCHAR(20) DEFAULT 'Plan', -- 'Plan' or 'Complaint'
-        Description NVARCHAR(MAX),
-        Notes NVARCHAR(MAX),
-        TotalAmount DECIMAL(18,2) DEFAULT 0,
-        TotalServiceTime INT DEFAULT 0, -- in minutes
+    CREATE TABLE ItemStock (
+        StockID INT IDENTITY(1,1) PRIMARY KEY,
+        ItemID INT FOREIGN KEY REFERENCES Items(ItemID),
         CompanyID INT FOREIGN KEY REFERENCES Companies(CompanyID),
-        Status BIT DEFAULT 1,
+        Quantity DECIMAL(18,2) DEFAULT 0,
+        Price DECIMAL(18,2) DEFAULT 0,
+        ReorderLevel DECIMAL(18,2) DEFAULT 0,
         CreatedAt DATETIME DEFAULT GETDATE(),
         UpdatedAt DATETIME DEFAULT GETDATE()
     );
 END
 
--- SalesMasterSystems Table
-IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'SalesMasterSystems')
+-- LEGACY -- ServiceCost (replaced by ContractCategoryServices)
+IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'ServiceCost')
 BEGIN
-    CREATE TABLE SalesMasterSystems (
-        SalesSystemID INT IDENTITY(1,1) PRIMARY KEY,
-        SalesNo INT FOREIGN KEY REFERENCES SalesMaster(SalesNo),
-        SystemID INT FOREIGN KEY REFERENCES Systems(SystemID),
-        Quantity INT DEFAULT 1,
-        Cost DECIMAL(18,2) DEFAULT 0,
-        CreatedAt DATETIME DEFAULT GETDATE()
-    );
-END
-
--- SalesMasterServices Table
-IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'SalesMasterServices')
-BEGIN
-    CREATE TABLE SalesMasterServices (
-        SalesServiceID INT IDENTITY(1,1) PRIMARY KEY,
-        SalesNo INT FOREIGN KEY REFERENCES SalesMaster(SalesNo),
+    CREATE TABLE ServiceCost (
+        ServiceCostID INT IDENTITY(1,1) PRIMARY KEY,
+        CategoryID INT FOREIGN KEY REFERENCES ContractCategories(CategoryID),
         ServiceID INT FOREIGN KEY REFERENCES Services(ServiceID),
-        Quantity INT DEFAULT 1,
         Cost DECIMAL(18,2) DEFAULT 0,
         ServiceTime INT DEFAULT 0,
-        CreatedAt DATETIME DEFAULT GETDATE()
-    );
-END
-
--- SalesMasterItems Table
-IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'SalesMasterItems')
-BEGIN
-    CREATE TABLE SalesMasterItems (
-        SalesItemID INT IDENTITY(1,1) PRIMARY KEY,
-        SalesNo INT FOREIGN KEY REFERENCES SalesMaster(SalesNo),
-        ItemID INT FOREIGN KEY REFERENCES Items(ItemID),
-        Quantity INT DEFAULT 1,
-        Cost DECIMAL(18,2) DEFAULT 0,
-        CreatedAt DATETIME DEFAULT GETDATE()
-    );
-END
-
--- Schedule Table
-IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'Schedule')
-BEGIN
-    CREATE TABLE Schedule (
-        ScheduleID INT IDENTITY(1,1) PRIMARY KEY,
-        SalesNo INT FOREIGN KEY REFERENCES SalesMaster(SalesNo),
-        ScheduleDate DATETIME NOT NULL,
-        ServiceTime TIME,
-        EngineerID INT FOREIGN KEY REFERENCES ServiceEngineers(EngineerID),
-        ServiceStatus NVARCHAR(20) DEFAULT 'Pending', -- 'Pending', 'Confirmed', 'Completed', 'Cancelled'
-        IsOverride BIT DEFAULT 0,
-        Notes NVARCHAR(500),
+        CompanyID INT FOREIGN KEY REFERENCES Companies(CompanyID),
         CreatedAt DATETIME DEFAULT GETDATE(),
         UpdatedAt DATETIME DEFAULT GETDATE()
     );
 END
 
--- Complaints Table
-IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'Complaints')
+-- LEGACY -- SystemCost (replaced by ContractCategorySystems)
+IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'SystemCost')
 BEGIN
-    CREATE TABLE Complaints (
-        ComplaintID INT IDENTITY(1,1) PRIMARY KEY,
-        SalesNo INT FOREIGN KEY REFERENCES SalesMaster(SalesNo),
-        ComplaintDate DATETIME DEFAULT GETDATE(),
-        Description NVARCHAR(MAX),
-        Status NVARCHAR(20) DEFAULT 'Open', -- 'Open', 'In Progress', 'Resolved', 'Closed'
-        Resolution NVARCHAR(MAX),
-        ResolvedDate DATETIME,
-        CreatedAt DATETIME DEFAULT GETDATE(),
-        UpdatedAt DATETIME DEFAULT GETDATE()
-    );
-END
-
--- SalesMasterPlan Table
-IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'SalesMasterPlan')
-BEGIN
-    CREATE TABLE SalesMasterPlan (
-        PlanID INT IDENTITY(1,1) PRIMARY KEY,
-        CustomerID INT FOREIGN KEY REFERENCES Customers(CustomerID),
-        PlanType NVARCHAR(50) DEFAULT 'Plan', -- 'Plan', 'Complaint'
-        Frequency NVARCHAR(50), -- 'Weekly', 'Monthly', 'Quarterly', 'Yearly'
-        Notes NVARCHAR(MAX),
-        CreatedBy INT FOREIGN KEY REFERENCES Users(UserID),
-        UpdatedBy INT FOREIGN KEY REFERENCES Users(UserID),
-        Status BIT DEFAULT 1,
-        CreatedAt DATETIME DEFAULT GETDATE(),
-        UpdatedAt DATETIME DEFAULT GETDATE()
-    );
-END
-
--- SalesMasterPlanSystem Table
-IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'SalesMasterPlanSystem')
-BEGIN
-    CREATE TABLE SalesMasterPlanSystem (
-        PlanSystemID INT IDENTITY(1,1) PRIMARY KEY,
-        PlanID INT FOREIGN KEY REFERENCES SalesMasterPlan(PlanID) ON DELETE CASCADE,
+    CREATE TABLE SystemCost (
+        SystemCostID INT IDENTITY(1,1) PRIMARY KEY,
+        CategoryID INT FOREIGN KEY REFERENCES ContractCategories(CategoryID),
         SystemID INT FOREIGN KEY REFERENCES Systems(SystemID),
-        Quantity INT DEFAULT 1,
-        CreatedAt DATETIME DEFAULT GETDATE()
+        Cost DECIMAL(18,2) DEFAULT 0,
+        CompanyID INT FOREIGN KEY REFERENCES Companies(CompanyID),
+        CreatedAt DATETIME DEFAULT GETDATE(),
+        UpdatedAt DATETIME DEFAULT GETDATE()
     );
 END
 
--- SalesMasterPlanService Table
-IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'SalesMasterPlanService')
+-- LEGACY -- ItemCost (replaced by ContractCategoryItems)
+IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'ItemCost')
 BEGIN
-    CREATE TABLE SalesMasterPlanService (
-        PlanServiceID INT IDENTITY(1,1) PRIMARY KEY,
-        PlanID INT FOREIGN KEY REFERENCES SalesMasterPlan(PlanID) ON DELETE CASCADE,
-        ServiceID INT FOREIGN KEY REFERENCES Services(ServiceID),
-        Quantity INT DEFAULT 1,
-        CreatedAt DATETIME DEFAULT GETDATE()
-    );
-END
-
--- SalesMasterPlanItem Table
-IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'SalesMasterPlanItem')
-BEGIN
-    CREATE TABLE SalesMasterPlanItem (
-        PlanItemID INT IDENTITY(1,1) PRIMARY KEY,
-        PlanID INT FOREIGN KEY REFERENCES SalesMasterPlan(PlanID) ON DELETE CASCADE,
+    CREATE TABLE ItemCost (
+        ItemCostID INT IDENTITY(1,1) PRIMARY KEY,
+        CategoryID INT FOREIGN KEY REFERENCES ContractCategories(CategoryID),
         ItemID INT FOREIGN KEY REFERENCES Items(ItemID),
-        Quantity INT DEFAULT 1,
-        CreatedAt DATETIME DEFAULT GETDATE()
+        Cost DECIMAL(18,2) DEFAULT 0,
+        CompanyID INT FOREIGN KEY REFERENCES Companies(CompanyID),
+        CreatedAt DATETIME DEFAULT GETDATE(),
+        UpdatedAt DATETIME DEFAULT GETDATE()
     );
 END
 
--- Holidays Table
+-- Holidays
 IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'Holidays')
 BEGIN
     CREATE TABLE Holidays (
@@ -494,17 +364,239 @@ BEGIN
     );
 END
 
--- Insert default data
--- Default Company
-IF NOT EXISTS (SELECT * FROM Companies WHERE CompanyCode = 'DEFAULT')
+-- SalesMasterPlan
+IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'SalesMasterPlan')
 BEGIN
-    INSERT INTO Companies (CompanyCode, CompanyName, Address, City, Status)
-    VALUES ('DEFAULT', 'Default Company', 'Default Address', 'Default City', 1);
+    CREATE TABLE SalesMasterPlan (
+        PlanID INT IDENTITY(1,1) PRIMARY KEY,
+        CustomerID INT FOREIGN KEY REFERENCES Customers(CustomerID),
+        PlanType NVARCHAR(50) DEFAULT 'Plan',
+        Frequency NVARCHAR(50),
+        Notes NVARCHAR(MAX),
+        CreatedBy INT FOREIGN KEY REFERENCES Users(UserID),
+        UpdatedBy INT FOREIGN KEY REFERENCES Users(UserID),
+        ContractTypeID INT FOREIGN KEY REFERENCES ContractCategories(CategoryID),
+        ContractPeriodID INT FOREIGN KEY REFERENCES ContractPeriods(PeriodID),
+        ContractStartingDate DATE,
+        Status BIT DEFAULT 1,
+        CreatedAt DATETIME DEFAULT GETDATE(),
+        UpdatedAt DATETIME DEFAULT GETDATE()
+    );
 END
 
--- Default Admin User (Password: admin123 - should be changed in production)
-IF NOT EXISTS (SELECT * FROM Users WHERE Username = 'admin')
+-- LEGACY -- SalesMasterPlanSystem (replaced by SalesPlanDetails)
+IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'SalesMasterPlanSystem')
 BEGIN
-    INSERT INTO Users (Username, Password, FullName, Email, Role, CompanyID, Status)
-    VALUES ('admin', '$2b$10$V9dfFWOXKH.lDUOaTWXwHuV2PtptQN5YGyzctQxsh8eiFoHE2.Qcq', 'Administrator', 'admin@qsystech.com', 'Admin', 1, 1);
+    CREATE TABLE SalesMasterPlanSystem (
+        PlanSystemID INT IDENTITY(1,1) PRIMARY KEY,
+        PlanID INT FOREIGN KEY REFERENCES SalesMasterPlan(PlanID) ON DELETE CASCADE,
+        SystemID INT FOREIGN KEY REFERENCES Systems(SystemID),
+        Quantity INT DEFAULT 1,
+        CreatedAt DATETIME DEFAULT GETDATE()
+    );
 END
+
+-- LEGACY -- SalesMasterPlanService (replaced by SalesPlanDetails)
+IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'SalesMasterPlanService')
+BEGIN
+    CREATE TABLE SalesMasterPlanService (
+        PlanServiceID INT IDENTITY(1,1) PRIMARY KEY,
+        PlanID INT FOREIGN KEY REFERENCES SalesMasterPlan(PlanID) ON DELETE CASCADE,
+        ServiceID INT FOREIGN KEY REFERENCES Services(ServiceID),
+        Quantity INT DEFAULT 1,
+        CreatedAt DATETIME DEFAULT GETDATE()
+    );
+END
+
+-- LEGACY -- SalesMasterPlanItem (replaced by SalesPlanDetails)
+IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'SalesMasterPlanItem')
+BEGIN
+    CREATE TABLE SalesMasterPlanItem (
+        PlanItemID INT IDENTITY(1,1) PRIMARY KEY,
+        PlanID INT FOREIGN KEY REFERENCES SalesMasterPlan(PlanID) ON DELETE CASCADE,
+        ItemID INT FOREIGN KEY REFERENCES Items(ItemID),
+        Quantity INT DEFAULT 1,
+        CreatedAt DATETIME DEFAULT GETDATE()
+    );
+END
+
+-- SalesMaster
+IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'SalesMaster')
+BEGIN
+    CREATE TABLE SalesMaster (
+        SalesNo INT IDENTITY(1,1) PRIMARY KEY,
+        SalesDate DATETIME DEFAULT GETDATE(),
+        CustomerID INT FOREIGN KEY REFERENCES Customers(CustomerID),
+        CategoryID INT FOREIGN KEY REFERENCES ContractCategories(CategoryID),
+        ContractTypeID INT,
+        ServiceIntervalID INT FOREIGN KEY REFERENCES ServiceIntervals(ServiceIntervalID),
+        ContractIntervalID INT FOREIGN KEY REFERENCES ContractIntervals(IntervalID),
+        ContractStartDate DATETIME,
+        PlanType NVARCHAR(20) DEFAULT 'Plan',
+        Description NVARCHAR(MAX),
+        Notes NVARCHAR(MAX),
+        TotalAmount DECIMAL(18,2) DEFAULT 0,
+        TotalServiceTime INT DEFAULT 0,
+        CompanyID INT FOREIGN KEY REFERENCES Companies(CompanyID),
+        Status BIT DEFAULT 1,
+        CreatedAt DATETIME DEFAULT GETDATE(),
+        UpdatedAt DATETIME DEFAULT GETDATE()
+    );
+END
+
+-- SalesMasterSystems
+IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'SalesMasterSystems')
+BEGIN
+    CREATE TABLE SalesMasterSystems (
+        SalesSystemID INT IDENTITY(1,1) PRIMARY KEY,
+        SalesNo INT FOREIGN KEY REFERENCES SalesMaster(SalesNo),
+        SystemID INT FOREIGN KEY REFERENCES Systems(SystemID),
+        Quantity INT DEFAULT 1,
+        Cost DECIMAL(18,2) DEFAULT 0,
+        CreatedAt DATETIME DEFAULT GETDATE()
+    );
+END
+
+-- SalesMasterServices
+IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'SalesMasterServices')
+BEGIN
+    CREATE TABLE SalesMasterServices (
+        SalesServiceID INT IDENTITY(1,1) PRIMARY KEY,
+        SalesNo INT FOREIGN KEY REFERENCES SalesMaster(SalesNo),
+        ServiceID INT FOREIGN KEY REFERENCES Services(ServiceID),
+        Quantity INT DEFAULT 1,
+        Cost DECIMAL(18,2) DEFAULT 0,
+        ServiceTime INT DEFAULT 0,
+        CreatedAt DATETIME DEFAULT GETDATE()
+    );
+END
+
+-- SalesMasterItems
+IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'SalesMasterItems')
+BEGIN
+    CREATE TABLE SalesMasterItems (
+        SalesItemID INT IDENTITY(1,1) PRIMARY KEY,
+        SalesNo INT FOREIGN KEY REFERENCES SalesMaster(SalesNo),
+        ItemID INT FOREIGN KEY REFERENCES Items(ItemID),
+        Quantity INT DEFAULT 1,
+        Cost DECIMAL(18,2) DEFAULT 0,
+        CreatedAt DATETIME DEFAULT GETDATE()
+    );
+END
+
+-- Schedule
+IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'Schedule')
+BEGIN
+    CREATE TABLE Schedule (
+        ScheduleID INT IDENTITY(1,1) PRIMARY KEY,
+        SalesNo INT FOREIGN KEY REFERENCES SalesMaster(SalesNo),
+        ScheduleDate DATETIME NOT NULL,
+        ServiceTime TIME,
+        EngineerID INT FOREIGN KEY REFERENCES ServiceEngineers(EngineerID),
+        ServiceStatus NVARCHAR(20) DEFAULT 'Pending',
+        IsOverride BIT DEFAULT 0,
+        Notes NVARCHAR(500),
+        CreatedAt DATETIME DEFAULT GETDATE(),
+        UpdatedAt DATETIME DEFAULT GETDATE()
+    );
+END
+
+-- Complaints
+IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'Complaints')
+BEGIN
+    CREATE TABLE Complaints (
+        ComplaintID INT IDENTITY(1,1) PRIMARY KEY,
+        SalesNo INT FOREIGN KEY REFERENCES SalesMaster(SalesNo),
+        ComplaintDate DATETIME DEFAULT GETDATE(),
+        Description NVARCHAR(MAX),
+        Status NVARCHAR(20) DEFAULT 'Open',
+        Resolution NVARCHAR(MAX),
+        ResolvedDate DATETIME,
+        CreatedAt DATETIME DEFAULT GETDATE(),
+        UpdatedAt DATETIME DEFAULT GETDATE()
+    );
+END
+
+-- ScheduleRequests
+IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'ScheduleRequests')
+BEGIN
+    CREATE TABLE ScheduleRequests (
+        RequestID INT IDENTITY(1,1) PRIMARY KEY,
+        ScheduleID INT NOT NULL FOREIGN KEY REFERENCES Schedule(ScheduleID),
+        CustomerID INT NOT NULL FOREIGN KEY REFERENCES Customers(CustomerID),
+        PreferredDate DATE NOT NULL,
+        PreferredTime NVARCHAR(10) NULL,
+        Reason NVARCHAR(500) NULL,
+        Status NVARCHAR(20) NOT NULL DEFAULT 'Pending',
+        CreatedAt DATETIME NOT NULL DEFAULT GETDATE(),
+        ProcessedAt DATETIME NULL
+    );
+END
+
+-- ContractCategorySystems (junctions: system availability per contract category)
+IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'ContractCategorySystems')
+BEGIN
+    CREATE TABLE ContractCategorySystems (
+        ContractSystemID INT IDENTITY(1,1) PRIMARY KEY,
+        CategoryID INT FOREIGN KEY REFERENCES ContractCategories(CategoryID),
+        SystemID INT FOREIGN KEY REFERENCES Systems(SystemID),
+        Cost DECIMAL(18,2) DEFAULT 0,
+        CompanyID INT FOREIGN KEY REFERENCES Companies(CompanyID),
+        Status BIT DEFAULT 1,
+        CreatedAt DATETIME DEFAULT GETDATE(),
+        UNIQUE(CategoryID, SystemID)
+    );
+END
+
+-- ContractCategoryServices (junctions: service availability per contract category)
+IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'ContractCategoryServices')
+BEGIN
+    CREATE TABLE ContractCategoryServices (
+        ContractServiceID INT IDENTITY(1,1) PRIMARY KEY,
+        CategoryID INT FOREIGN KEY REFERENCES ContractCategories(CategoryID),
+        ServiceID INT FOREIGN KEY REFERENCES Services(ServiceID),
+        Cost DECIMAL(18,2) DEFAULT 0,
+        ServiceTime INT DEFAULT 0,
+        CompanyID INT FOREIGN KEY REFERENCES Companies(CompanyID),
+        Status BIT DEFAULT 1,
+        CreatedAt DATETIME DEFAULT GETDATE(),
+        UNIQUE(CategoryID, ServiceID)
+    );
+END
+
+-- ContractCategoryItems (junctions: item availability per contract category)
+IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'ContractCategoryItems')
+BEGIN
+    CREATE TABLE ContractCategoryItems (
+        ContractItemID INT IDENTITY(1,1) PRIMARY KEY,
+        CategoryID INT FOREIGN KEY REFERENCES ContractCategories(CategoryID),
+        ItemID INT FOREIGN KEY REFERENCES Items(ItemID),
+        Cost DECIMAL(18,2) DEFAULT 0,
+        CompanyID INT FOREIGN KEY REFERENCES Companies(CompanyID),
+        Status BIT DEFAULT 1,
+        CreatedAt DATETIME DEFAULT GETDATE(),
+        UNIQUE(CategoryID, ItemID)
+    );
+END
+
+-- SalesPlanDetails (unified replacement for SalesMasterPlanSystem/Service/Item)
+IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'SalesPlanDetails')
+BEGIN
+    CREATE TABLE SalesPlanDetails (
+        DetailID INT IDENTITY(1,1) PRIMARY KEY,
+        PlanID INT FOREIGN KEY REFERENCES SalesMasterPlan(PlanID) ON DELETE CASCADE,
+        LineType NVARCHAR(20) NOT NULL,
+        ReferenceID INT NOT NULL,
+        Quantity INT DEFAULT 1,
+        UnitCost DECIMAL(18,2) DEFAULT 0,
+        LineTotal DECIMAL(18,2) DEFAULT 0,
+        ServiceTime INT DEFAULT 0,
+        QualityParameters NVARCHAR(MAX),
+        Notes NVARCHAR(500),
+        Status BIT DEFAULT 1,
+        CreatedAt DATETIME DEFAULT GETDATE(),
+        UpdatedAt DATETIME DEFAULT GETDATE()
+    );
+END
+
+PRINT 'Schema created successfully!';

@@ -1,3 +1,4 @@
+// LEGACY SCRIPT -- ContractPeriods table now in schema.sql; seed data in seed.sql
 require('dotenv').config();
 const { executeNonQuery, executeQuery, executeScalar } = require('../config/database');
 const fs = require('fs');

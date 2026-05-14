@@ -15,6 +15,7 @@ export interface LoginResponse {
     email: string;
     role: string;
     companyId: number;
+    customerId?: number | null;
   };
   accessRights: Array<{
     FormName: string;

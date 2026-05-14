@@ -1,3 +1,4 @@
+-- LEGACY SCRIPT -- DDL now in schema.sql; data-migration INSERTS are one-time only
 -- Migration for Sales Master Plan System with Contract Type Logic and Traceability
 -- Run this to update the schema
 

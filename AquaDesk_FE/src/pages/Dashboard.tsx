@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import api from '../services/api';
 import salesMasterPlanService from '../services/salesMasterPlanService';
 import type { SalesMasterPlan } from '../services/salesMasterPlanService';
 import {
@@ -13,18 +14,47 @@ import {
   FileText,
 } from 'lucide-react';
 
+interface DashboardStats {
+  totalCustomers: number;
+  activeContracts: number;
+  salesThisMonth: number;
+  monthlyRevenue: number;
+  pendingTasks: number;
+  todayTasks: {
+    pending: number;
+    confirmed: number;
+    completed: number;
+  };
+}
+
 const Dashboard: React.FC = () => {
   const { user } = useAuth();
+  const [stats, setStats] = useState<DashboardStats | null>(null);
   const [plans, setPlans] = useState<SalesMasterPlan[]>([]);
   const [planView, setPlanView] = useState<'all' | 'weekly' | 'monthly'>('all');
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    loadData();
+  }, []);
 
   useEffect(() => {
     loadPlans();
   }, [planView]);
 
+  const loadData = async () => {
+    try {
+      const res = await api.get('/dashboard/stats');
+      setStats(res.data);
+    } catch {
+      setError('Failed to load dashboard data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const loadPlans = async () => {
-    setLoading(true);
     try {
       let response;
       if (planView === 'all') {
@@ -32,26 +62,36 @@ const Dashboard: React.FC = () => {
       } else {
         response = await salesMasterPlanService.getByFrequency(planView);
       }
-      setPlans(response.data.slice(0, 5)); // Show only first 5
+      setPlans(response.data.slice(0, 5));
     } catch (error) {
       console.error('Failed to load plans:', error);
-    } finally {
-      setLoading(false);
     }
   };
 
-  const stats = [
-    { name: 'Total Customers', value: '156', icon: Users, color: 'bg-blue-500' },
-    { name: 'Active Contracts', value: '89', icon: FileText, color: 'bg-green-500' },
-    { name: 'Sales This Month', value: '23', icon: ShoppingCart, color: 'bg-purple-500' },
-    { name: 'Pending Tasks', value: '12', icon: Calendar, color: 'bg-orange-500' },
-  ];
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+      </div>
+    );
+  }
 
-  const recentActivities = [
-    { id: 1, action: 'New customer added', user: 'John Doe', time: '2 hours ago' },
-    { id: 2, action: 'Contract renewed', user: 'Jane Smith', time: '4 hours ago' },
-    { id: 3, action: 'Task completed', user: 'Bob Johnson', time: '5 hours ago' },
-    { id: 4, action: 'New sales record', user: 'Alice Brown', time: '6 hours ago' },
+  if (error) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-red-600 mb-4">{error}</p>
+        <button onClick={loadData} className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark">
+          Retry
+        </button>
+      </div>
+    );
+  }
+
+  const statCards = [
+    { name: 'Total Customers', value: stats?.totalCustomers || 0, icon: Users, color: 'bg-blue-500' },
+    { name: 'Active Contracts', value: stats?.activeContracts || 0, icon: FileText, color: 'bg-green-500' },
+    { name: 'Sales This Month', value: stats?.salesThisMonth || 0, icon: ShoppingCart, color: 'bg-purple-500' },
+    { name: 'Pending Tasks', value: stats?.pendingTasks || 0, icon: Calendar, color: 'bg-orange-500' },
   ];
 
   return (
@@ -61,9 +101,8 @@ const Dashboard: React.FC = () => {
         <p className="text-gray-600">Welcome back, {user?.fullName}!</p>
       </div>
 
-      {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {stats.map((stat) => (
+        {statCards.map((stat) => (
           <div key={stat.name} className="bg-white rounded-xl shadow-sm p-6">
             <div className="flex items-center justify-between">
               <div>
@@ -78,7 +117,6 @@ const Dashboard: React.FC = () => {
         ))}
       </div>
 
-      {/* Quick Actions */}
       <div className="bg-white rounded-xl shadow-sm p-6">
         <h2 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -101,59 +139,72 @@ const Dashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* Recent Activity */}
-      <div className="bg-white rounded-xl shadow-sm p-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">Recent Activity</h2>
-        <div className="space-y-4">
-          {recentActivities.map((activity) => (
-            <div key={activity.id} className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg">
-              <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
-                <Clock className="w-5 h-5 text-primary" />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="bg-white rounded-xl shadow-sm p-6">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">Today's Tasks</h2>
+          <div className="space-y-3">
+            <div className="flex items-center justify-between p-3 bg-yellow-50 rounded-lg">
+              <div className="flex items-center gap-3">
+                <AlertCircle className="w-5 h-5 text-yellow-600" />
+                <div>
+                  <p className="font-medium text-gray-900">Pending</p>
+                </div>
               </div>
-              <div className="flex-1">
-                <p className="font-medium text-gray-900">{activity.action}</p>
-                <p className="text-sm text-gray-600">by {activity.user}</p>
-              </div>
-              <span className="text-sm text-gray-500">{activity.time}</span>
+              <span className="text-lg font-bold text-yellow-700">{stats?.todayTasks.pending || 0}</span>
             </div>
-          ))}
+            <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
+              <div className="flex items-center gap-3">
+                <Clock className="w-5 h-5 text-blue-600" />
+                <div>
+                  <p className="font-medium text-gray-900">Confirmed</p>
+                </div>
+              </div>
+              <span className="text-lg font-bold text-blue-700">{stats?.todayTasks.confirmed || 0}</span>
+            </div>
+            <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
+              <div className="flex items-center gap-3">
+                <CheckCircle className="w-5 h-5 text-green-600" />
+                <div>
+                  <p className="font-medium text-gray-900">Completed</p>
+                </div>
+              </div>
+              <span className="text-lg font-bold text-green-700">{stats?.todayTasks.completed || 0}</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl shadow-sm p-6">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">Revenue Overview</h2>
+          <div className="flex items-center gap-4 mb-4">
+            <TrendingUp className="w-8 h-8 text-green-600" />
+            <div>
+              <p className="text-2xl font-bold text-gray-900">
+                ${(stats?.monthlyRevenue || 0).toLocaleString()}
+              </p>
+              <p className="text-sm text-green-600">Monthly Revenue</p>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Sales Master Plans */}
       <div className="bg-white rounded-xl shadow-sm p-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-gray-900">Sales Master Plans</h2>
           <div className="flex gap-2">
-            <button
-              onClick={() => setPlanView('all')}
-              className={`px-3 py-1 text-sm rounded-lg transition-colors ${
-                planView === 'all' ? 'bg-primary text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              All
-            </button>
-            <button
-              onClick={() => setPlanView('weekly')}
-              className={`px-3 py-1 text-sm rounded-lg transition-colors ${
-                planView === 'weekly' ? 'bg-primary text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              Weekly
-            </button>
-            <button
-              onClick={() => setPlanView('monthly')}
-              className={`px-3 py-1 text-sm rounded-lg transition-colors ${
-                planView === 'monthly' ? 'bg-primary text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              Monthly
-            </button>
+            {(['all', 'weekly', 'monthly'] as const).map((v) => (
+              <button
+                key={v}
+                onClick={() => setPlanView(v)}
+                className={`px-3 py-1 text-sm rounded-lg transition-colors ${
+                  planView === v ? 'bg-primary text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                {v.charAt(0).toUpperCase() + v.slice(1)}
+              </button>
+            ))}
           </div>
         </div>
-        {loading ? (
-          <div className="text-center py-8">Loading...</div>
-        ) : plans.length === 0 ? (
+        {plans.length === 0 ? (
           <div className="text-center py-8 text-gray-500">No plans found</div>
         ) : (
           <div className="space-y-3">
@@ -172,50 +223,6 @@ const Dashboard: React.FC = () => {
             ))}
           </div>
         )}
-      </div>
-
-      {/* Task Status */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white rounded-xl shadow-sm p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Today's Tasks</h2>
-          <div className="space-y-3">
-            <div className="flex items-center gap-3 p-3 bg-yellow-50 rounded-lg">
-              <AlertCircle className="w-5 h-5 text-yellow-600" />
-              <div className="flex-1">
-                <p className="font-medium text-gray-900">Pending</p>
-                <p className="text-sm text-gray-600">5 tasks need confirmation</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg">
-              <Clock className="w-5 h-5 text-blue-600" />
-              <div className="flex-1">
-                <p className="font-medium text-gray-900">In Progress</p>
-                <p className="text-sm text-gray-600">3 tasks being serviced</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3 p-3 bg-green-50 rounded-lg">
-              <CheckCircle className="w-5 h-5 text-green-600" />
-              <div className="flex-1">
-                <p className="font-medium text-gray-900">Completed</p>
-                <p className="text-sm text-gray-600">8 tasks finished today</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-xl shadow-sm p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Revenue Overview</h2>
-          <div className="flex items-center gap-4 mb-4">
-            <TrendingUp className="w-8 h-8 text-green-600" />
-            <div>
-              <p className="text-2xl font-bold text-gray-900">$45,231</p>
-              <p className="text-sm text-green-600">+12.5% from last month</p>
-            </div>
-          </div>
-          <div className="h-32 bg-gray-100 rounded-lg flex items-center justify-center text-gray-500">
-            Chart placeholder
-          </div>
-        </div>
       </div>
     </div>
   );

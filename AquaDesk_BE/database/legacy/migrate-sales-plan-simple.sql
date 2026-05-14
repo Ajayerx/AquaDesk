@@ -1,3 +1,4 @@
+-- LEGACY SCRIPT -- DDL now in schema.sql; use this script only for one-time migration on existing DBs
 -- Migration for Sales Master Plan System with Contract Type Logic and Traceability
 -- Run this to update the schema
 

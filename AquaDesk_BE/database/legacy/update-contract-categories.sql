@@ -1,3 +1,4 @@
+-- LEGACY SCRIPT -- ContractStatus column now included in schema.sql ContractCategories CREATE TABLE
 -- Update ContractCategories to have proper status field with MC/NOT-MC/SUSPENDED
 -- Run this migration to add the new status column
 

@@ -24,13 +24,14 @@ if (isWindowsAuth) {
   };
 }
 
-async function runMigration() {
+async function runSeed() {
   try {
     console.log(`Connecting to SQL Server: ${process.env.DB_SERVER}, DB: ${process.env.DB_DATABASE}`);
     const pool = await sql.connect(config);
     
-    const migrationFile = path.join(__dirname, 'migrate-sales-plan.sql');
-    const sqlScript = fs.readFileSync(migrationFile, 'utf8');
+    // LEGACY: Consider switching to 'seed.sql' instead of 'seed-data.sql'
+    const seedFile = path.join(__dirname, 'seed-data.sql');
+    const sqlScript = fs.readFileSync(seedFile, 'utf8');
     
     // Split on GO statements and execute each batch
     const batches = sqlScript.split(/\nGO\n/i).filter(b => b.trim().length > 0);
@@ -41,7 +42,8 @@ async function runMigration() {
         try {
           await pool.request().query(batch);
         } catch (err) {
-          console.error(`Batch ${i + 1} error: ${err.message.substring(0, 200)}`);
+          // Some batches may have issues with PRINT or complex syntax
+          console.error(`Batch ${i + 1} error: ${err.message}`);
         }
       }
     }
@@ -49,6 +51,7 @@ async function runMigration() {
     // If no GO statements, try running the whole script as one batch
     if (batches.length <= 1) {
       try {
+        // Split by semicolons for individual statements
         const statements = sqlScript.split(';').filter(s => s.trim().length > 0);
         for (const stmt of statements) {
           try {
@@ -62,10 +65,11 @@ async function runMigration() {
       }
     }
     
-    // Verify new tables
-    const newTables = ['ContractCategorySystems', 'ContractCategoryServices', 'ContractCategoryItems', 'SalesPlanDetails'];
-    console.log('\n=== New Tables Row Counts ===');
-    for (const table of newTables) {
+    // Verify row counts
+    const tables = ['Companies','Users','UserAccess','AreaCodes','ContractCategories','ContractIntervals','ServiceIntervals','Systems','Services','Items','ItemStock','ServiceCost','SystemCost','ItemCost','ServiceHours','ServiceTeams','ServiceEngineers','Customers','CustomerSystems','ServiceContracts','SalesMaster','SalesMasterSystems','SalesMasterServices','SalesMasterItems','Schedule','Complaints','SalesMasterPlan','SalesMasterPlanSystem','SalesMasterPlanService','SalesMasterPlanItem'];
+    
+    console.log('\n=== Row Counts ===');
+    for (const table of tables) {
       try {
         const result = await pool.request().query(`SELECT COUNT(*) AS cnt FROM ${table}`);
         console.log(`  ${table}: ${result.recordset[0].cnt} rows`);
@@ -75,12 +79,12 @@ async function runMigration() {
     }
     
     await pool.close();
-    console.log('\nMigration completed!');
+    console.log('\nSeed completed!');
     process.exit(0);
   } catch (error) {
-    console.error('Migration failed:', error.message);
+    console.error('Seed failed:', error.message);
     process.exit(1);
   }
 }
 
-runMigration();
+runSeed();

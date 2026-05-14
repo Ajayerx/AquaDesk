@@ -1,3 +1,4 @@
+-- LEGACY SCRIPT -- ContractPeriods table now in schema.sql; seed data in seed.sql
 -- Add Contract Periods table
 IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'ContractPeriods')
 BEGIN

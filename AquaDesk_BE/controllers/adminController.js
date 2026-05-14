@@ -1698,6 +1698,139 @@ const deleteHoliday = async (req, res) => {
   }
 };
 
+// Schedule Requests - Admin
+const getAllScheduleRequests = async (req, res) => {
+  try {
+    const companyId = req.user.companyId;
+    const requests = await executeQuery(
+      `SELECT sr.RequestID, sr.ScheduleID, sr.CustomerID, sr.PreferredDate, sr.PreferredTime,
+              sr.Reason, sr.Status, sr.CreatedAt, sr.ProcessedAt,
+              c.CustomerName, c.CustomerCode,
+              s.ScheduleDate, s.ServiceTime, s.ServiceStatus,
+              e.EngineerName
+       FROM ScheduleRequests sr
+       INNER JOIN Customers c ON sr.CustomerID = c.CustomerID
+       INNER JOIN Schedule s ON sr.ScheduleID = s.ScheduleID
+       LEFT JOIN ServiceEngineers e ON s.EngineerID = e.EngineerID
+       WHERE c.CompanyID = @CompanyID
+       ORDER BY sr.CreatedAt DESC`,
+      { CompanyID: companyId }
+    );
+    res.json(requests);
+  } catch (error) {
+    console.error('Get schedule requests error:', error);
+    res.status(500).json({ error: 'Failed to fetch schedule requests' });
+  }
+};
+
+const updateScheduleRequest = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    if (!status || !['Approved', 'Rejected'].includes(status)) {
+      return res.status(400).json({ error: 'Status must be Approved or Rejected' });
+    }
+
+    await executeNonQuery(
+      `UPDATE ScheduleRequests 
+       SET Status = @Status, ProcessedAt = GETDATE()
+       WHERE RequestID = @RequestID`,
+      { Status: status, RequestID: id }
+    );
+
+    if (status === 'Approved') {
+      const request = await executeScalar(
+        'SELECT ScheduleID, PreferredDate, PreferredTime FROM ScheduleRequests WHERE RequestID = @RequestID',
+        { RequestID: id }
+      );
+      if (request) {
+        await executeNonQuery(
+          `UPDATE Schedule 
+           SET ScheduleDate = @ScheduleDate, ServiceTime = @ServiceTime, ServiceStatus = 'Pending', UpdatedAt = GETDATE()
+           WHERE ScheduleID = @ScheduleID`,
+          {
+            ScheduleDate: request.PreferredDate,
+            ServiceTime: request.PreferredTime || null,
+            ScheduleID: request.ScheduleID
+          }
+        );
+      }
+    }
+
+    res.json({ message: 'Schedule request updated successfully' });
+  } catch (error) {
+    console.error('Update schedule request error:', error);
+    res.status(500).json({ error: 'Failed to update schedule request' });
+  }
+};
+
+// Enhanced Complaints Admin
+const getAllComplaintsAdmin = async (req, res) => {
+  try {
+    const companyId = req.user.companyId;
+    const { status } = req.query;
+
+    let query = `SELECT comp.*, c.CustomerName, c.CustomerCode, sm.SalesNo
+                 FROM Complaints comp
+                 LEFT JOIN SalesMaster sm ON comp.SalesNo = sm.SalesNo
+                 LEFT JOIN Customers c ON sm.CustomerID = c.CustomerID
+                 WHERE (c.CompanyID = @CompanyID OR c.CompanyID IS NULL)
+                   AND (c.Status = 1 OR c.CustomerID IS NULL)`;
+
+    const params = { CompanyID: companyId };
+
+    if (status) {
+      query += ` AND comp.Status = @Status`;
+      params.Status = status;
+    }
+
+    query += ' ORDER BY comp.ComplaintDate DESC';
+
+    const complaints = await executeQuery(query, params);
+    res.json(complaints);
+  } catch (error) {
+    console.error('Get complaints admin error:', error);
+    res.status(500).json({ error: 'Failed to fetch complaints' });
+  }
+};
+
+const updateComplaintAdmin = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status, resolution } = req.body;
+
+    if (!status) {
+      return res.status(400).json({ error: 'Status is required' });
+    }
+
+    const validStatuses = ['Open', 'In Progress', 'Resolved', 'Closed'];
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({ error: 'Invalid status' });
+    }
+
+    let query = `UPDATE Complaints SET Status = @Status`;
+    const params = { Status: status, ComplaintID: id };
+
+    if (resolution) {
+      query += `, Resolution = @Resolution`;
+      params.Resolution = resolution;
+    }
+
+    if (status === 'Resolved') {
+      query += `, ResolvedDate = GETDATE()`;
+    }
+
+    query += ` WHERE ComplaintID = @ComplaintID`;
+
+    await executeNonQuery(query, params);
+    res.json({ message: 'Complaint updated successfully' });
+  } catch (error) {
+    console.error('Update complaint admin error:', error);
+    res.status(500).json({ error: 'Failed to update complaint' });
+  }
+};
+
 module.exports = {
   // Engineers
   getAllEngineers,
@@ -1758,7 +1891,13 @@ module.exports = {
   getAllHolidays,
   createHoliday,
   updateHoliday,
-  deleteHoliday
+  deleteHoliday,
+  // Schedule Requests
+  getAllScheduleRequests,
+  updateScheduleRequest,
+  // Complaints Admin
+  getAllComplaintsAdmin,
+  updateComplaintAdmin
 };
 
 // Get systems by contract type (for dynamic filtering in Sales Master Plan)
@@ -1942,6 +2081,12 @@ module.exports = {
   createHoliday,
   updateHoliday,
   deleteHoliday,
+  // Schedule Requests
+  getAllScheduleRequests,
+  updateScheduleRequest,
+  // Complaints Admin
+  getAllComplaintsAdmin,
+  updateComplaintAdmin,
   // Contract Type Filtering for Sales Master Plan
   getSystemsByContractType,
   getServicesByContractType,

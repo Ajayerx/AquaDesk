@@ -140,11 +140,21 @@ const deleteContract = async (req, res) => {
 const renewContract = async (req, res) => {
   try {
     const { id } = req.params;
-    const { newEndDate, newContractPeriod, newFrequency, notes } = req.body;
+    const { newEndDate, newContractPeriod, newFrequency, newContractValue, renewalNotes, notes } = req.body;
 
     if (!newEndDate) {
       return res.status(400).json({ error: 'New end date is required' });
     }
+
+    const renewalNote = renewalNotes || notes || '';
+    const existingNotes = await executeScalar(
+      'SELECT Notes FROM ServiceContracts WHERE ContractID = @ContractID',
+      { ContractID: id }
+    );
+
+    const updatedNotes = existingNotes && existingNotes.Notes
+      ? existingNotes.Notes + ' | Renewal: ' + renewalNote
+      : 'Renewal: ' + renewalNote;
 
     await executeNonQuery(
       `UPDATE ServiceContracts 
@@ -155,7 +165,7 @@ const renewContract = async (req, res) => {
         NewEndDate: newEndDate,
         NewContractPeriod: newContractPeriod || null,
         NewFrequency: newFrequency || null,
-        notes,
+        Notes: updatedNotes,
         ContractID: id
       }
     );

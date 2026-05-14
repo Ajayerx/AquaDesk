@@ -1,3 +1,4 @@
+-- LEGACY SCRIPT -- All seed data now consolidated in seed.sql
 -- Seed Data for Qsystech Service Management System
 -- Run after schema.sql. Uses IDENTITY_INSERT OFF (auto-increment).
 -- All inserts use IF NOT EXISTS to avoid conflicts.

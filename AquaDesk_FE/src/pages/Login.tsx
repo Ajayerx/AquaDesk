@@ -20,7 +20,13 @@ const Login: React.FC = () => {
 
     try {
       await login({ username, password, rememberMe });
-      navigate('/dashboard');
+      const storedUser = JSON.parse(localStorage.getItem('user') || '{}');
+      const userRole = storedUser.role;
+      if (userRole === 'Customer') {
+        navigate('/customer/dashboard');
+      } else {
+        navigate('/dashboard');
+      }
     } catch (err: any) {
       setError(err.response?.data?.error || 'Login failed. Please try again.');
     } finally {

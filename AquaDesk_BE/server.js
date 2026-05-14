@@ -16,6 +16,8 @@ const adminRoutes = require('./routes/adminRoutes');
 const reportRoutes = require('./routes/reportRoutes');
 const contractRoutes = require('./routes/contractRoutes');
 const swaggerRoutes = require('./routes/swaggerRoutes');
+const customerPortalRoutes = require('./routes/customerPortalRoutes');
+const dashboardRoutes = require('./routes/dashboardRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -63,6 +65,12 @@ app.use('/api/schedule', scheduleRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/contracts', contractRoutes);
+
+// Customer Portal API
+app.use('/api/customer-portal', customerPortalRoutes);
+
+// Dashboard API
+app.use('/api/dashboard', dashboardRoutes);
 
 // Swagger API Documentation
 app.use('/api-docs', swaggerRoutes);

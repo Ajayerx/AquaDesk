@@ -1,22 +1,23 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
 import { authService } from '../services/authService';
-import type { LoginData } from '../services/authService';
+import type { LoginData, LoginResponse } from '../services/authService';
 
-interface User {
+export interface User {
   userId: number;
   username: string;
   fullName: string;
   email: string;
   role: string;
   companyId: number;
+  customerId?: number | null;
 }
 
-interface AuthContextType {
+export interface AuthContextType {
   user: User | null;
   token: string | null;
   accessRights: any[];
-  login: (data: LoginData) => Promise<void>;
+  login: (data: LoginData) => Promise<LoginResponse>;
   logout: () => void;
   loading: boolean;
   hasPermission: (formName: string, action: string) => boolean;
@@ -59,6 +60,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setToken(token);
     setUser(user);
     setAccessRights(accessRights);
+
+    return response.data;
   };
 
   const logout = () => {

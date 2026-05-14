@@ -1,3 +1,4 @@
+// LEGACY SCRIPT -- ContractStatus column now in schema.sql ContractCategories CREATE TABLE
 require('dotenv').config();
 const { executeNonQuery, executeQuery } = require('../config/database');
 

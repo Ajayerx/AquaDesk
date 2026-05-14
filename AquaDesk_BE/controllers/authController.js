@@ -63,7 +63,8 @@ const login = async (req, res) => {
         fullName: user.FullName,
         email: user.Email,
         role: user.Role,
-        companyId: user.CompanyID
+        companyId: user.CompanyID,
+        customerId: user.CustomerID || null
       },
       accessRights
     });
@@ -83,7 +84,7 @@ const logout = async (req, res) => {
 const getCurrentUser = async (req, res) => {
   try {
     const user = await executeScalar(
-      'SELECT UserID, Username, FullName, Email, Phone, Role, CompanyID, LastLogin FROM Users WHERE UserID = @UserID',
+      'SELECT UserID, Username, FullName, Email, Phone, Role, CompanyID, CustomerID, LastLogin FROM Users WHERE UserID = @UserID',
       { UserID: req.user.userId }
     );
 

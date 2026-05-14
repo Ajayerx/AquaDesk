@@ -1,3 +1,4 @@
+// LEGACY SCRIPT -- DDL now in schema.sql; use only for one-time migration on existing DBs
 require('dotenv').config();
 const { executeNonQuery, executeQuery } = require('../config/database');
 
